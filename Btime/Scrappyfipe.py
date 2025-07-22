@@ -46,17 +46,20 @@ class FipeScrappySite:
         try:
             self.driver.get(self.link)
             time.sleep(3)
+            # acessa a opção Consulta de Carros e Utilitários Pequenos
             consultaCarros = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//div[contains(text(),'Consulta de Carros e Utilitários Pequenos')]"))
             )
             
             consultaCarros.click()
             time.sleep(2)
+            # acessa a opção Pesquisa por código Fipe
             pesquisaCodigo = self.wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//a[contains(text(),'Pesquisa por código Fipe')]"))
             )
             pesquisaCodigo.click()
             time.sleep(2)
+            # pesquisa pelo codigoFipe
             inputCodigo = self.wait.until(
                 EC.presence_of_element_located((By.ID, "selectCodigocarroCodigoFipe"))
             )
@@ -64,7 +67,9 @@ class FipeScrappySite:
             inputCodigo.send_keys(codigoFipe)
             self.driver.execute_script("arguments[0].blur();", inputCodigo)
             time.sleep(5)
-            try:
+            
+            # Selecionar a ultima opção disponível  de ano modelo 
+            try:#padrão do site número 1
                 dropdown_visible = WebDriverWait(self.driver, 20).until(EC.element_to_be_clickable((By.ID, "selectCodigoAnocarroCodigoFipe_chosen")))
                 dropdown_visible.click()
                 primeiro_item = self.wait.until(
@@ -73,33 +78,38 @@ class FipeScrappySite:
                 primeiro_item.click()
             except:
                 pass
-            try:
+            try:#padrão do site número 2
                 select = Select(self.wait.until(EC.presence_of_element_located((By.ID, "selectCodigoAnocarroCodigoFipe"))))
                 select.select_by_value(next(opt.get_attribute("value") for opt in select.options if opt.get_attribute("value").strip()))
             except:
                 pass
+
             time.sleep(2)
             botaoPesquisar = self.wait.until(
                 EC.element_to_be_clickable((By.ID, "buttonPesquisarcarroPorCodigoFipe"))
             )
+            #clica em pesquisar
             botaoPesquisar.click()
-            try:
+            try: #tenta encontrar o elemento, se for Encontrado chama a função TratarResultado e retorna o resultado
                 resultado = WebDriverWait(self.driver, 20).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, 'div#resultadocarroCodigoFipe'))
                 )
                 print("Elemento encontrado.")
                 resultado = self.TratarResultado()
                 return resultado
-            except TimeoutException:
+            except TimeoutException: # excessão de timeout (não encontrou o elemento)
                 print("Elemento não encontrado (timeout).")
                 return {}
 
-        except TimeoutException:
+        except TimeoutException: # excessão de timeout na tela
             print(f"Tempo excedido ao tentar pesquisar o código FIPE: {codigoFipe}")
-        except NoSuchElementException as e:
+            return {}
+        except NoSuchElementException as e: #excessão de elemento não encontrado 
             print(f"Elemento não encontrado durante a pesquisa: {e}")
-        except Exception as erro:
+            return {}
+        except Exception as erro: #erro não esperado
             print(f"Erro inesperado na pesquisa: {erro}")
+            return {}
 
     def TratarResultado(self):
         try:
@@ -108,10 +118,8 @@ class FipeScrappySite:
             html_tabela = resultado.get_attribute("innerHTML")
             # Converte para DataFrame
             tabela_df = pd.read_html(html_tabela)[0]
-
+            # transforma o dataFrame em dicionário 
             dados_dict = {row[0].replace(":", "").strip(): row[1] for _, row in tabela_df.iterrows()}
-            
-            # Se quiser imprimir como JSON formatado
             json_str = json.dumps(dados_dict, ensure_ascii=False)
             return json_str
         except:
@@ -119,14 +127,14 @@ class FipeScrappySite:
             
     def preencherDataFrame(self,fipe,retorno):
         try:
-            if retorno:
+            if retorno:#se for verdadeiro atribui valor as variáveis
                 retorno = json.loads(retorno)
                 valor = retorno["Preço Médio"]
                 marca = retorno["Marca"]
                 modelo = retorno["Modelo"]
                 anoModelo = retorno["Ano Modelo"]
                 mesReferencia = retorno["Mês de referência"]
-            else:
+            else:# senão atribui vazio as variáveis
                 valor,marca,modelo,anoModelo,mesReferencia = "","","","",""
             ultimaLinha = self.DataFrame.shape[0]
             self.DataFrame.loc[ultimaLinha,"FIPE"] = str(fipe)
@@ -156,8 +164,8 @@ def main():
         return
         
     listaFipe = scrappy.lista
-    for pesquisa in listaFipe.iterrows():
-        codigoFipe = pesquisa[1][0].strip()
+    for _, linha in listaFipe.iterrows():
+        codigoFipe = linha[0].strip()
         retorno = scrappy.PesquisarCarros(codigoFipe=codigoFipe)
         scrappy.preencherDataFrame(codigoFipe,retorno)
     scrappy.SalvarCsv()
