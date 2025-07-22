@@ -1,6 +1,6 @@
 # 🚗 Projeto Btime – Web Scraping de Tabela FIPE
 
-Este projeto tem como objetivo realizar a extração de dados da **Tabela FIPE**, utilizando **web scraping** e **consumo de API**.
+Este projeto tem como objetivo realizar a extração de dados da **Tabela FIPE** e retornar o último valor disponível, utilizando **web scraping** e **consumo de API**.
 
 ---
 
